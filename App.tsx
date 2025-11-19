@@ -1,12 +1,12 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { CURRENCIES, CHART_COLORS } from './constants';
-import { CashCount, BreakdownItem, NumberingSystem, Currency, Denomination, Theme } from './types';
+import { CashCount, BreakdownItem, NumberingSystem, Currency, Denomination, Theme, SavedRecord } from './types';
 import DenominationRow from './components/DenominationRow';
 import SummaryPanel from './components/SummaryPanel';
-import Numpad from './components/Numpad';
 import SettingsModal from './components/SettingsModal';
-import { Settings, Share2, RotateCcw, AlertTriangle } from 'lucide-react';
+import Numpad from './components/Numpad';
+import { Menu, Share2, RotateCcw, AlertTriangle, Save } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { numberToWords } from './utils';
 
@@ -17,9 +17,25 @@ const App: React.FC = () => {
   const [numberingSystem, setNumberingSystem] = useState<NumberingSystem>('indian');
   const [theme, setTheme] = useState<Theme>('light');
   const [counts, setCounts] = useState<CashCount>({});
-  const [activeDenominationVal, setActiveDenominationVal] = useState<number | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [activeDenom, setActiveDenom] = useState<number | null>(null);
+  
+  // Load saved records from local storage
+  const [savedRecords, setSavedRecords] = useState<SavedRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem('rokka-saved');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to load saved records", e);
+      return [];
+    }
+  });
+
+  // Save to local storage whenever savedRecords changes
+  useEffect(() => {
+    localStorage.setItem('rokka-saved', JSON.stringify(savedRecords));
+  }, [savedRecords]);
 
   // --- Derived Data ---
   const currentCurrency = useMemo(() => 
@@ -62,8 +78,6 @@ const App: React.FC = () => {
   [totalAmount, numberingSystem]);
 
   // --- Theme Effect ---
-  // This applies the class to the root element so standard Tailwind `dark:` classes work,
-  // and the custom `theme-black` class triggers the CSS variable overrides in index.html.
   const rootClass = useMemo(() => {
     if (theme === 'light') return 'h-screen flex flex-col font-sans overflow-hidden bg-[var(--bg-app)] transition-colors duration-300';
     if (theme === 'black') return 'dark theme-black h-screen flex flex-col font-sans overflow-hidden bg-[var(--bg-app)] transition-colors duration-300';
@@ -71,36 +85,47 @@ const App: React.FC = () => {
   }, [theme]);
 
   // --- Handlers ---
-  const handleNumpadPress = useCallback((key: string) => {
-    if (activeDenominationVal === null) return;
+  
+  const handleRowClick = (denomValue: number) => {
+    setActiveDenom(denomValue);
+  };
+
+  const handleNumpadClose = () => {
+    setActiveDenom(null);
+  };
+
+  const handleNumpadPress = (key: string) => {
+    if (activeDenom === null) return;
 
     setCounts(prev => {
-      const currentCount = prev[activeDenominationVal] || 0;
+      const currentCount = prev[activeDenom] || 0;
       let newCount = currentCount;
 
       if (key === 'CLEAR') {
         newCount = 0;
       } else if (key === 'BACKSPACE') {
-        newCount = Math.floor(currentCount / 10);
+        const str = currentCount.toString();
+        newCount = str.length > 1 ? parseInt(str.slice(0, -1), 10) : 0;
       } else {
-        const digit = parseInt(key, 10);
-        const potentialCount = currentCount * 10 + digit;
-        if (potentialCount < 100000) { 
-             newCount = potentialCount;
+        // Number key
+        const str = currentCount === 0 ? key : currentCount.toString() + key;
+        // Prevent overflow/crazy numbers
+        if (str.length <= 6) {
+           newCount = parseInt(str, 10);
         }
       }
 
       return {
         ...prev,
-        [activeDenominationVal]: newCount
+        [activeDenom]: newCount
       };
     });
-  }, [activeDenominationVal]);
+  };
 
   const handleCurrencyChange = (currencyId: string) => {
     setSelectedCurrencyId(currencyId);
     setCounts({});
-    setActiveDenominationVal(null);
+    setActiveDenom(null);
   };
 
   const handleUpdateDenominations = (currencyId: string, newDenominations: Denomination[]) => {
@@ -120,16 +145,33 @@ const App: React.FC = () => {
 
   const confirmReset = () => {
     setCounts({});
-    setActiveDenominationVal(null);
+    setActiveDenom(null);
     setIsResetConfirmOpen(false);
   };
 
+  const handleSave = () => {
+    if (totalAmount === 0) return;
+    
+    const newRecord: SavedRecord = {
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      totalAmount,
+      currencyCode: currentCurrency.code,
+      counts: { ...counts }
+    };
+
+    setSavedRecords(prev => [newRecord, ...prev]);
+    alert("Count saved successfully!");
+  };
+
+  const handleDeleteRecord = (id: string) => {
+    setSavedRecords(prev => prev.filter(r => r.id !== id));
+  };
+
   const handleShare = async () => {
-    setActiveDenominationVal(null);
     await new Promise(resolve => setTimeout(resolve, 150));
 
     try {
-      // Use null background to respect the current theme's CSS variables
       const canvas = await html2canvas(document.body, {
         backgroundColor: null, 
         scale: 2,
@@ -173,29 +215,29 @@ const App: React.FC = () => {
     <div className={rootClass}>
       {/* --- Header --- */}
       <header className="bg-[var(--bg-card)] border-b border-[var(--border-color)] shrink-0 z-30 shadow-sm h-16 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full grid grid-cols-3 items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
           
-          {/* Left: Settings */}
-          <div className="justify-self-start">
-            <button 
-              onClick={() => setIsSettingsOpen(true)}
-              className="no-screenshot flex items-center gap-2 text-[var(--text-muted)] hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors p-2 -ml-2 rounded-md hover:bg-[var(--bg-card-hover)]"
-            >
-              <Settings size={20} />
-              <span className="text-sm font-medium hidden sm:inline">Settings</span>
-            </button>
-          </div>
-
-          {/* Center: Title */}
-          <div className="justify-self-center">
-            <h1 className="text-2xl sm:text-3xl font-black text-[var(--text-main)] tracking-[0.2em] uppercase select-none">
+          {/* Left: Title */}
+          <div className="flex items-center">
+             <h1 className="text-2xl sm:text-3xl font-black text-slate-600 dark:text-slate-400 tracking-[0.2em] uppercase select-none">
               ROKKA
             </h1>
           </div>
 
-          {/* Right: Reset & Share Button */}
-          <div className="justify-self-end flex items-center gap-1">
+          {/* Right: Action Icons */}
+          <div className="flex items-center gap-1 sm:gap-2">
+            {/* Save */}
             <button
+              onClick={handleSave}
+              className="no-screenshot flex items-center gap-2 text-emerald-600 hover:text-emerald-700 dark:text-emerald-500 dark:hover:text-emerald-400 transition-colors p-2 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+              title="Save current count"
+            >
+               <Save size={20} />
+               <span className="text-sm font-medium hidden sm:inline">Save</span>
+            </button>
+
+            {/* Reset */}
+             <button
               onClick={handleResetClick}
               className="no-screenshot flex items-center gap-2 text-rose-600 hover:text-rose-700 dark:text-rose-500 dark:hover:text-rose-400 transition-colors p-2 rounded-md hover:bg-rose-50 dark:hover:bg-rose-900/20"
               title="Reset all counts"
@@ -203,12 +245,25 @@ const App: React.FC = () => {
               <RotateCcw size={20} />
               <span className="text-sm font-medium hidden sm:inline">Reset</span>
             </button>
+
+            {/* Share */}
             <button
               onClick={handleShare}
-              className="no-screenshot flex items-center gap-2 text-[var(--text-muted)] hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors p-2 -mr-2 rounded-md hover:bg-[var(--bg-card-hover)]"
+              className="no-screenshot flex items-center gap-2 text-[var(--text-muted)] hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors p-2 rounded-md hover:bg-[var(--bg-card-hover)]"
+              title="Share"
             >
               <Share2 size={20} />
               <span className="text-sm font-medium hidden sm:inline">Share</span>
+            </button>
+
+            {/* Settings */}
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="no-screenshot flex items-center gap-2 text-[var(--text-muted)] hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors p-2 rounded-md hover:bg-[var(--bg-card-hover)]"
+              title="Settings"
+            >
+              <Menu size={20} />
+              <span className="text-sm font-medium hidden sm:inline">Settings</span>
             </button>
           </div>
         </div>
@@ -217,19 +272,19 @@ const App: React.FC = () => {
       {/* --- Main Content --- */}
       <main className="flex-1 flex overflow-hidden max-w-7xl mx-auto w-full p-4 sm:p-6 gap-6">
         
-        {/* Left Column: Inputs & Numpad */}
-        <div className="flex-1 flex flex-col min-w-0 lg:w-2/3 lg:flex-none h-full transition-all duration-300">
+        {/* Left Column: Inputs */}
+        <div className="flex-1 flex flex-col min-w-0 lg:w-2/3 lg:flex-none h-full transition-all duration-300 relative">
             
             {/* Denominations List */}
-            <div className="flex-1 overflow-y-auto bg-[var(--bg-card)] rounded-t-2xl shadow-sm border border-[var(--border-color)] border-b-0 scroll-smooth relative transition-colors duration-300">
+            <div className={`flex-1 overflow-y-auto bg-[var(--bg-card)] rounded-t-2xl shadow-sm border border-[var(--border-color)] border-b-0 scroll-smooth relative transition-colors duration-300 ${activeDenom !== null ? 'pb-80 lg:pb-0' : ''}`}>
               
               {/* Table Header */}
               <div className="sticky top-0 z-20 bg-[var(--bg-card)]/95 backdrop-blur-sm flex items-center px-4 py-2 border-b border-[var(--border-color)] text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider transition-colors duration-300">
-                <div className="w-[25%] text-right">VALUE</div>
+                <div className="w-[20%] text-right">VALUE</div>
                 <div className="w-[5%] opacity-0">×</div>
-                <div className="w-[20%] text-right">Count</div>
+                <div className="w-[30%] text-right">Count</div>
                 <div className="w-[5%] opacity-0">=</div>
-                <div className="w-[45%] text-right">Total</div>
+                <div className="w-[40%] text-right">Total</div>
               </div>
 
               <div className="divide-y divide-[var(--border-color)] pb-2">
@@ -239,8 +294,8 @@ const App: React.FC = () => {
                     denomination={denom}
                     count={counts[denom.value] || 0}
                     symbol={currentCurrency.symbol}
-                    isActive={activeDenominationVal === denom.value}
-                    onSelect={setActiveDenominationVal}
+                    onRowClick={handleRowClick}
+                    isActive={activeDenom === denom.value}
                     index={index}
                     numberingSystem={numberingSystem}
                   />
@@ -254,30 +309,18 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Grand Total Display */}
-            <div className={`bg-indigo-600 dark:bg-indigo-700 text-white py-3 px-4 flex flex-col gap-2 z-10 relative transition-all ${activeDenominationVal === null ? 'rounded-b-2xl mb-0' : 'rounded-b-none'}`}>
-               <div className="flex items-center justify-between w-full">
-                   <div className="text-lg font-bold">Grand Total</div>
-                   <div className="flex items-center gap-3">
-                      <span className="font-mono text-2xl font-bold">{formattedTotal}</span>
-                   </div>
-               </div>
-               <div className="mt-1 pt-2 border-t border-white/20 text-center text-xs sm:text-sm font-medium uppercase tracking-wide opacity-90">
-                   {totalInWords}
-               </div>
-            </div>
-
-            {/* Numpad */}
-            {activeDenominationVal !== null && (
-              <div className="no-screenshot bg-[var(--bg-card)] p-4 rounded-b-2xl shadow-sm border border-[var(--border-color)] border-t-0 animate-in slide-in-from-bottom-10 duration-200 fade-in transition-colors duration-300">
-                <div className="max-w-md mx-auto">
-                   <Numpad 
-                      onPress={handleNumpadPress} 
-                      onClose={() => setActiveDenominationVal(null)}
-                   />
+            {/* Grand Total Display - Always Visible */}
+            <div className="bg-indigo-600 dark:bg-indigo-700 text-white py-3 px-4 flex flex-col gap-2 z-10 relative rounded-b-2xl transition-all shadow-lg">
+                <div className="flex items-center justify-between w-full">
+                    <div className="text-lg font-bold">Grand Total</div>
+                    <div className="flex items-center gap-3">
+                        <span className="font-mono text-2xl font-bold">{formattedTotal}</span>
+                    </div>
                 </div>
-              </div>
-            )}
+                <div className="mt-1 pt-2 border-t border-white/20 text-center text-xs sm:text-sm font-medium uppercase tracking-wide opacity-90">
+                    {totalInWords}
+                </div>
+            </div>
         </div>
 
         {/* Right Column: Summary */}
@@ -289,6 +332,13 @@ const App: React.FC = () => {
             />
         </div>
       </main>
+
+      {/* Numpad Overlay */}
+      {activeDenom !== null && (
+        <div className="no-screenshot fixed bottom-0 left-0 right-0 z-40 animate-in slide-in-from-bottom duration-300 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] lg:absolute lg:bottom-4 lg:left-auto lg:right-4 lg:w-96 lg:rounded-2xl">
+           <Numpad onPress={handleNumpadPress} onClose={handleNumpadClose} />
+        </div>
+      )}
 
       {/* Settings Modal */}
       <SettingsModal 
@@ -302,6 +352,8 @@ const App: React.FC = () => {
         onUpdateDenominations={handleUpdateDenominations}
         theme={theme}
         onThemeChange={setTheme}
+        savedRecords={savedRecords}
+        onDeleteRecord={handleDeleteRecord}
       />
 
       {/* Reset Confirmation Dialog */}

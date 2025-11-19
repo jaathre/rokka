@@ -6,29 +6,18 @@ interface DenominationRowProps {
   denomination: Denomination;
   count: number;
   symbol: string;
+  onRowClick: (value: number) => void;
   isActive: boolean;
-  onSelect: (value: number) => void;
   index: number;
   numberingSystem: NumberingSystem;
 }
-
-// Neutral monochrome styles for all rows
-const ROW_STYLE = {
-  base: 'bg-transparent hover:bg-[var(--bg-card-hover)]', 
-  active: 'bg-[var(--bg-card-hover)] border-r-[var(--text-main)]', 
-  text: 'text-[var(--text-main)]', 
-  subText: 'text-[var(--text-muted)]',
-  countBase: 'text-[var(--text-muted)]',
-  countActive: 'bg-[var(--bg-app)] text-[var(--text-main)] ring-[var(--text-muted)]'
-};
 
 const DenominationRow: React.FC<DenominationRowProps> = ({
   denomination,
   count,
   symbol,
+  onRowClick,
   isActive,
-  onSelect,
-  index,
   numberingSystem
 }) => {
   const totalValue = count * denomination.value;
@@ -36,51 +25,53 @@ const DenominationRow: React.FC<DenominationRowProps> = ({
   
   return (
     <div 
-      onClick={() => onSelect(denomination.value)}
-      className={`
-        flex items-center py-2 px-4 cursor-pointer transition-all duration-200 border-b border-[var(--bg-card)] last:border-0
+      onClick={() => onRowClick(denomination.value)}
+      className={`flex items-center py-2 px-4 border-b border-[var(--bg-card)] last:border-0 cursor-pointer transition-colors group
         ${isActive 
-          ? `${ROW_STYLE.active} border-r-4 pr-3` 
-          : `${ROW_STYLE.base} border-r-4 border-r-transparent`
+          ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/30' 
+          : 'hover:bg-[var(--bg-card-hover)]'
         }
       `}
     >
-      {/* Value Label - Right Aligned (25%) */}
-      <div className="w-[25%] text-right">
-        <span className={`text-lg font-bold ${ROW_STYLE.text}`}>
+      {/* Value Label - 20% */}
+      <div className="w-[20%] text-right">
+        <span className={`text-lg font-bold transition-colors ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-[var(--text-main)]'}`}>
           {symbol}{denomination.label}
         </span>
       </div>
 
-      {/* Multiplication Symbol (5%) */}
-      <div className={`w-[5%] text-center ${ROW_STYLE.subText} font-light text-xl select-none opacity-50`}>×</div>
+      {/* X - 5% */}
+      <div className="w-[5%] text-center text-[var(--text-muted)] font-light text-xl select-none opacity-30 group-hover:opacity-50 transition-opacity">×</div>
 
-      {/* Count Display - Right Aligned (20%) */}
-      <div className="w-[20%] flex justify-end">
-        <span className={`
-          inline-block px-2 py-1 rounded-md font-mono text-xl min-w-[2.5rem] text-center transition-all
-          ${isActive 
-            ? `${ROW_STYLE.countActive} shadow-sm ring-1 font-bold` 
-            : `${ROW_STYLE.text} opacity-70`
-          }
-          ${count === 0 && !isActive ? ROW_STYLE.countBase : ''}
-        `}>
-          {count}
-        </span>
+      {/* Input (Read Only) - 30% */}
+      <div className="w-[30%] flex justify-end">
+        <input
+            type="text"
+            readOnly
+            inputMode="none" // Prevents keyboard on some devices
+            value={count === 0 ? '' : count.toString()}
+            placeholder="0"
+            className={`w-full max-w-[8rem] text-right bg-transparent border rounded-md px-2 py-1 text-xl font-bold focus:outline-none placeholder:text-[var(--text-muted)]/30 transition-all cursor-pointer pointer-events-none
+                ${isActive 
+                    ? 'text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 bg-white/50 dark:bg-black/20' 
+                    : 'text-[var(--text-main)] border-transparent group-hover:border-[var(--border-color)]'
+                }
+            `}
+        />
       </div>
 
-      {/* Equals Symbol (5%) */}
-      <div className={`w-[5%] text-center ${ROW_STYLE.subText} font-light text-xl select-none opacity-50`}>=</div>
+      {/* = - 5% */}
+      <div className="w-[5%] text-center text-[var(--text-muted)] font-light text-xl select-none opacity-30 group-hover:opacity-50 transition-opacity">=</div>
 
-      {/* Total Value - Right Aligned (45%) */}
-      <div className="w-[45%] text-right">
-        <span className={`font-mono font-medium text-lg ${isActive ? ROW_STYLE.text : 'text-[var(--text-muted)]'}`}>
+      {/* Total Value - 40% */}
+      <div className="w-[40%] text-right">
+        <span className={`font-mono font-medium text-lg transition-colors ${isActive ? 'text-indigo-700 dark:text-indigo-300' : 'text-[var(--text-main)]'}`}>
           {totalValue > 0 ? (
-             <span className={ROW_STYLE.text}>
+             <span>
                {symbol}{totalValue.toLocaleString(formatLocale, { maximumFractionDigits: 0, useGrouping: numberingSystem !== 'none' })}
              </span>
           ) : (
-             <span className="opacity-30">-</span>
+             <span className="opacity-20 text-[var(--text-muted)]">-</span>
           )}
         </span>
       </div>

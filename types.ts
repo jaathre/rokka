@@ -24,6 +24,14 @@ export interface BreakdownItem {
   color: string;
 }
 
+export interface SavedRecord {
+  id: string;
+  timestamp: number;
+  totalAmount: number;
+  currencyCode: string;
+  counts: CashCount;
+}
+
 export type NumberingSystem = 'indian' | 'international' | 'none';
 
 export type Theme = 'light' | 'dark' | 'black';

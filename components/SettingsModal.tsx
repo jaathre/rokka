@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Moon, Sun, History, Palette, Globe, Trash2, FileText, ChevronRight, ArrowLeft, Layers, Plus, Save, Coins, Banknote, Smartphone, Github, Info } from 'lucide-react';
-import { NumberingSystem, Currency, Denomination, Theme } from '../types';
+import { X, Moon, Sun, Save, Palette, Globe, Trash2, FileText, ChevronRight, ArrowLeft, Layers, Plus, Coins, Banknote, Smartphone, Github, Info, Calendar } from 'lucide-react';
+import { NumberingSystem, Currency, Denomination, Theme, SavedRecord } from '../types';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -14,9 +14,11 @@ interface SettingsModalProps {
   onUpdateDenominations: (currencyId: string, denoms: Denomination[]) => void;
   theme: Theme;
   onThemeChange: (theme: Theme) => void;
+  savedRecords: SavedRecord[];
+  onDeleteRecord: (id: string) => void;
 }
 
-type SettingsView = 'main' | 'general' | 'appearance' | 'data' | 'denominations' | 'about';
+type SettingsView = 'main' | 'general' | 'appearance' | 'saved' | 'denominations' | 'about';
 
 const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
@@ -28,7 +30,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   onNumberingChange,
   onUpdateDenominations,
   theme,
-  onThemeChange
+  onThemeChange,
+  savedRecords,
+  onDeleteRecord
 }) => {
   const [currentView, setCurrentView] = useState<SettingsView>('main');
   const [editingDenoms, setEditingDenoms] = useState<Denomination[]>([]);
@@ -51,7 +55,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     switch (currentView) {
       case 'general': return 'General';
       case 'appearance': return 'Appearance';
-      case 'data': return 'Data & History';
+      case 'saved': return 'Saved Records';
       case 'denominations': return 'Edit Denominations';
       case 'about': return 'About';
       default: return 'Settings';
@@ -164,16 +168,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       </button>
 
       <button 
-        onClick={() => setCurrentView('data')}
+        onClick={() => setCurrentView('saved')}
         className="w-full flex items-center justify-between p-4 rounded-xl bg-[var(--bg-app)] hover:bg-[var(--bg-card-hover)] hover:text-indigo-600 dark:hover:text-indigo-400 transition-all group border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900/30"
       >
         <div className="flex items-center gap-4">
           <div className="p-2.5 bg-[var(--bg-card)] rounded-lg shadow-sm text-[var(--text-muted)] group-hover:text-indigo-500 transition-colors">
-             <History size={20} />
+             <Save size={20} />
           </div>
           <div className="text-left">
-            <div className="font-semibold text-[var(--text-main)] group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Data & History</div>
-            <div className="text-xs text-[var(--text-muted)] group-hover:text-indigo-500/70">Logs and reset</div>
+            <div className="font-semibold text-[var(--text-main)] group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Saved Records</div>
+            <div className="text-xs text-[var(--text-muted)] group-hover:text-indigo-500/70">View saved counts</div>
           </div>
         </div>
         <ChevronRight size={18} className="text-[var(--border-strong)] group-hover:text-indigo-400" />
@@ -410,33 +414,49 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     </div>
   );
 
-  const renderDataView = () => (
+  const renderSavedView = () => (
     <div className="p-6 space-y-4">
-        <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl overflow-hidden divide-y divide-[var(--border-color)]">
-            <button className="w-full flex items-center justify-between p-4 hover:bg-[var(--bg-card-hover)] transition-colors text-left group">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-[var(--bg-app)] rounded-lg text-[var(--text-muted)] group-hover:bg-[var(--bg-card)] group-hover:shadow-sm transition-all">
-                       <FileText size={20} />
+        <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl overflow-hidden">
+            {savedRecords.length === 0 ? (
+                <div className="p-8 text-center text-[var(--text-muted)] flex flex-col items-center">
+                    <div className="p-3 bg-[var(--bg-app)] rounded-full mb-3">
+                        <FileText size={24} className="opacity-50"/>
                     </div>
-                    <div>
-                       <div className="text-sm font-medium text-[var(--text-main)]">View History Logs</div>
-                       <div className="text-xs text-[var(--text-muted)]">Check past calculations</div>
-                    </div>
+                    <p className="font-medium">No saved counts yet</p>
+                    <p className="text-xs mt-1 opacity-70">Tap the green Save button on the main screen</p>
                 </div>
-                <ChevronRight size={16} className="text-[var(--border-strong)]" />
-            </button>
-            
-            <button className="w-full flex items-center justify-between p-4 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors text-left group">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-rose-100 dark:bg-rose-900/30 rounded-lg text-rose-600 group-hover:bg-white dark:group-hover:bg-rose-900/50 group-hover:shadow-sm transition-all">
-                       <Trash2 size={20} />
-                    </div>
-                    <div>
-                       <div className="text-sm font-medium text-[var(--text-main)] group-hover:text-rose-700 dark:group-hover:text-rose-400">Clear App Data</div>
-                       <div className="text-xs text-[var(--text-muted)] group-hover:text-rose-400/80">Reset all local preferences</div>
-                    </div>
+            ) : (
+                <div className="divide-y divide-[var(--border-color)]">
+                    {savedRecords.map((record) => (
+                        <div key={record.id} className="flex items-center justify-between p-4 hover:bg-[var(--bg-card-hover)] transition-colors group">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-[var(--bg-app)] rounded-lg text-[var(--text-muted)] group-hover:bg-[var(--bg-card)] group-hover:text-indigo-500 transition-all">
+                                    <Calendar size={20} />
+                                </div>
+                                <div>
+                                    <div className="text-sm font-bold text-[var(--text-main)] font-mono">
+                                        {new Intl.NumberFormat(numberingSystem === 'indian' ? 'en-IN' : 'en-US', {
+                                            style: 'currency',
+                                            currency: record.currencyCode,
+                                            maximumFractionDigits: 0
+                                        }).format(record.totalAmount)}
+                                    </div>
+                                    <div className="text-xs text-[var(--text-muted)]">
+                                        {new Date(record.timestamp).toLocaleString()}
+                                    </div>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => onDeleteRecord(record.id)}
+                                className="p-2 text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors opacity-50 group-hover:opacity-100"
+                                title="Delete"
+                            >
+                                <Trash2 size={18} />
+                            </button>
+                        </div>
+                    ))}
                 </div>
-            </button>
+            )}
         </div>
     </div>
   );
@@ -489,7 +509,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             {currentView === 'general' && renderGeneralView()}
             {currentView === 'denominations' && renderDenominationsView()}
             {currentView === 'appearance' && renderAppearanceView()}
-            {currentView === 'data' && renderDataView()}
+            {currentView === 'saved' && renderSavedView()}
             {currentView === 'about' && renderAboutView()}
         </div>
         
