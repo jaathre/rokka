@@ -1,0 +1,5 @@
+{
+  "name": "ROKKA",
+  "description": "A smart cash denomination counter with multi-currency support and visual analytics.",
+  "requestFramePermissions": []
+}
