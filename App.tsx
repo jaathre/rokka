@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { CURRENCIES, CHART_COLORS } from './constants';
 import { CashCount, BreakdownItem, NumberingSystem, Currency, Denomination, Theme } from './types';
@@ -7,6 +8,7 @@ import Numpad from './components/Numpad';
 import SettingsModal from './components/SettingsModal';
 import { Settings, Share2, RotateCcw, AlertTriangle } from 'lucide-react';
 import html2canvas from 'html2canvas';
+import { numberToWords } from './utils';
 
 const App: React.FC = () => {
   // --- State ---
@@ -52,7 +54,12 @@ const App: React.FC = () => {
     style: 'currency',
     currency: currentCurrency.code,
     maximumFractionDigits: 0,
+    useGrouping: numberingSystem !== 'none'
   }).format(totalAmount);
+
+  const totalInWords = useMemo(() => 
+    numberToWords(totalAmount, numberingSystem), 
+  [totalAmount, numberingSystem]);
 
   // --- Theme Effect ---
   // This applies the class to the root element so standard Tailwind `dark:` classes work,
@@ -217,15 +224,15 @@ const App: React.FC = () => {
             <div className="flex-1 overflow-y-auto bg-[var(--bg-card)] rounded-t-2xl shadow-sm border border-[var(--border-color)] border-b-0 scroll-smooth relative transition-colors duration-300">
               
               {/* Table Header */}
-              <div className="sticky top-0 z-20 bg-[var(--bg-card)]/95 backdrop-blur-sm flex items-center px-4 py-3 border-b border-[var(--border-color)] text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider transition-colors duration-300">
-                <div className="w-32 text-right">DENOMINATION</div>
-                <div className="w-6 px-2 opacity-0">×</div>
-                <div className="flex-1 text-right pr-8">Count</div>
-                <div className="w-6 px-2 opacity-0">=</div>
-                <div className="w-28 text-right">Total</div>
+              <div className="sticky top-0 z-20 bg-[var(--bg-card)]/95 backdrop-blur-sm flex items-center px-4 py-2 border-b border-[var(--border-color)] text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider transition-colors duration-300">
+                <div className="w-[25%] text-right">VALUE</div>
+                <div className="w-[5%] opacity-0">×</div>
+                <div className="w-[20%] text-right">Count</div>
+                <div className="w-[5%] opacity-0">=</div>
+                <div className="w-[45%] text-right">Total</div>
               </div>
 
-              <div className="divide-y divide-[var(--border-color)] pb-4">
+              <div className="divide-y divide-[var(--border-color)] pb-2">
                 {currentCurrency.denominations.map((denom, index) => (
                   <DenominationRow
                     key={`${currentCurrency.id}-${denom.value}`}
@@ -248,10 +255,15 @@ const App: React.FC = () => {
             </div>
 
             {/* Grand Total Display */}
-            <div className={`bg-indigo-600 dark:bg-indigo-700 text-white py-3 px-4 flex items-center justify-between z-10 relative transition-all ${activeDenominationVal === null ? 'rounded-b-2xl mb-0' : 'rounded-b-none'}`}>
-               <div className="text-lg font-bold">Grand Total</div>
-               <div className="flex items-center gap-3">
-                  <span className="font-mono text-2xl font-bold">{formattedTotal}</span>
+            <div className={`bg-indigo-600 dark:bg-indigo-700 text-white py-3 px-4 flex flex-col gap-2 z-10 relative transition-all ${activeDenominationVal === null ? 'rounded-b-2xl mb-0' : 'rounded-b-none'}`}>
+               <div className="flex items-center justify-between w-full">
+                   <div className="text-lg font-bold">Grand Total</div>
+                   <div className="flex items-center gap-3">
+                      <span className="font-mono text-2xl font-bold">{formattedTotal}</span>
+                   </div>
+               </div>
+               <div className="mt-1 pt-2 border-t border-white/20 text-center text-xs sm:text-sm font-medium uppercase tracking-wide opacity-90">
+                   {totalInWords}
                </div>
             </div>
 

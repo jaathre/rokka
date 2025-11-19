@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { BreakdownItem, Currency, NumberingSystem } from '../types';
@@ -51,7 +52,12 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
                   ))}
                 </Pie>
                 <Tooltip 
-                    formatter={(value: number) => new Intl.NumberFormat(formatLocale, { style: 'currency', currency: currency.code, maximumFractionDigits: 0 }).format(value)}
+                    formatter={(value: number) => new Intl.NumberFormat(formatLocale, { 
+                      style: 'currency', 
+                      currency: currency.code, 
+                      maximumFractionDigits: 0,
+                      useGrouping: numberingSystem !== 'none'
+                    }).format(value)}
                     contentStyle={{ 
                         borderRadius: '8px', 
                         border: 'none', 

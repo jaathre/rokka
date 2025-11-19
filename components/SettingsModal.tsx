@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { X, Moon, Sun, History, Palette, Globe, Trash2, FileText, ChevronRight, ArrowLeft, Layers, Plus, Save, Coins, Banknote, Smartphone, Github, Info } from 'lucide-react';
 import { NumberingSystem, Currency, Denomination, Theme } from '../types';
@@ -202,7 +203,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       {/* Numbering System */}
       <div>
         <label className="block text-sm font-medium text-[var(--text-muted)] mb-3">Numbering System</label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
            <button 
               onClick={() => onNumberingChange('indian')}
               className={`p-3 rounded-xl border text-left transition-all
@@ -225,6 +226,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
            >
              <div className="text-sm font-semibold mb-1">International</div>
              <div className="text-xs opacity-70 font-mono">100,000</div>
+           </button>
+
+           <button 
+              onClick={() => onNumberingChange('none')}
+              className={`p-3 rounded-xl border text-left transition-all
+                ${numberingSystem === 'none' 
+                   ? 'bg-indigo-50 border-indigo-500 text-indigo-900 dark:bg-indigo-900/20 dark:border-indigo-400 dark:text-indigo-300' 
+                   : 'bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-card-hover)]'}
+              `}
+           >
+             <div className="text-sm font-semibold mb-1">None</div>
+             <div className="text-xs opacity-70 font-mono">100000</div>
            </button>
         </div>
       </div>

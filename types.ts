@@ -1,3 +1,4 @@
+
 export interface Denomination {
   value: number;
   label: string; // e.g. "500", "200"
@@ -23,6 +24,6 @@ export interface BreakdownItem {
   color: string;
 }
 
-export type NumberingSystem = 'indian' | 'international';
+export type NumberingSystem = 'indian' | 'international' | 'none';
 
 export type Theme = 'light' | 'dark' | 'black';
