@@ -1,6 +1,8 @@
 {
   "name": "ROKKA - Cash Counter",
   "short_name": "ROKKA",
+  "description": "A smart cash denomination counter with multi-currency support.",
+  "id": "/",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f8fafc",
@@ -9,7 +11,7 @@
   "icons": [
     {
       "src": "icon.svg",
-      "sizes": "any",
+      "sizes": "192x192 512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
