@@ -1,11 +1,11 @@
-const CACHE_NAME = 'rokka-v1';
+const CACHE_NAME = 'rokka-v2';
 
-// Install event - clean up old caches if needed
+// Install event - skip waiting to activate immediately
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate event
+// Activate event - clear old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -21,37 +21,32 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch event - Cache First for static assets, Network First for others, or Dynamic caching
+// Fetch event - Network First, fall back to Cache
 self.addEventListener('fetch', (event) => {
-  // Skip cross-origin requests that aren't scripts/styles/images we want to cache
-  // But for this app, we rely on CDNs, so we want to cache them dynamically.
-  
+  // Skip non-GET requests
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
-      return fetch(event.request).then((networkResponse) => {
+    fetch(event.request)
+      .then((networkResponse) => {
         // Check if we received a valid response
         if (!networkResponse || networkResponse.status !== 200 || networkResponse.type === 'error') {
           return networkResponse;
         }
 
-        // Clone the response because it's a stream and can only be consumed once
+        // Clone the response
         const responseToCache = networkResponse.clone();
 
+        // Cache the new response
         caches.open(CACHE_NAME).then((cache) => {
           cache.put(event.request, responseToCache);
         });
 
         return networkResponse;
-      }).catch(() => {
-        // Fallback for offline if not in cache (could return a custom offline page here)
-        return new Response('Offline - Connect to internet to load resources');
-      });
-    })
+      })
+      .catch(() => {
+        // Network failed, try cache
+        return caches.match(event.request);
+      })
   );
 });
